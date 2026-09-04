@@ -30,16 +30,7 @@ path <- "/Users/pc/Desktop/New folder (3)/70_ Coral Sampls/"
 # List files to confirm they are visible
 list.files(path)
 
-#url_R1 <- "https://ebi.ac.uk"
-#url_R2 <- "https://ebi.ac.uk"
-
-#download.file(url_R1, destfile = paste0(path, "SRR8470289_R1.fastq.gz"), mode = "wb")
-#download.file(url_R2, destfile = paste0(path, "SRR8470289_R2.fastq.gz"), mode = "wb")
-
-
 # ── 2. Sort and Match Forward & Reverse Reads ──────────────
-# Adjust pattern to match your file naming convention:
-# Common patterns: *_R1_001.fastq.gz  |  *_R1.fastq.gz  |  *_1.fastq
 fnFs <- sort(list.files(path, pattern = "forward", full.names = TRUE, recursive = TRUE))
 fnRs <- sort(list.files(path, pattern = "reverse", full.names = TRUE, recursive = TRUE))
 
@@ -65,8 +56,6 @@ names(filtFs) <- sample.names
 names(filtRs) <- sample.names
 
 # ▸ Adjust truncLen based on quality plots above
-# ▸ For V3-V4 region (Illumina 2×250): truncLen=c(250,200) is typical
-# ▸ For V4 region (Illumina 2×150): truncLen=c(150,130) is typical
 out <- filterAndTrim(
   fnFs, filtFs,
   fnRs, filtRs,
@@ -126,8 +115,6 @@ dim(seqtab)  # rows = samples, columns = ASVs
 
 # Inspect length distribution of merged sequences
 table(nchar(getSequences(seqtab)))
-# ▸ For V1-V2: expected amplicon ~330-350 bp
-
 
 # ── 10. Remove Chimeras ─────────────────────────────────────
 seqtab.nochim <- removeBimeraDenovo(
@@ -142,26 +129,11 @@ dim(seqtab.nochim)
 # Fraction of reads retained after chimera removal (should be >80%)
 cat("Fraction of reads retained:", sum(seqtab.nochim) / sum(seqtab), "\n")
 
-# ── 11. Track Reads Through Pipeline ───────────────────────
-getN <- function(x) sum(getUniques(x))
-
-track <- cbind(
-  out[rownames(out) %in% paste0(sample.names, ".fastqsanger"), ],
-  sapply(dadaFs,  getN),
-  sapply(dadaRs,  getN),
-  sapply(mergers, getN),
-  rowSums(seqtab.nochim)
-)
-
-colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
-rownames(track) <- sample.names
-print(track)
-
 # Save tracking table
 write.csv(as.data.frame(track),
           file = file.path(path, "read_tracking.csv"))
 
-# ── 12. Assign Taxonomy ─────────────────────────────────────
+# ── 11. Assign Taxonomy ─────────────────────────────────────
 # Download Silva database from: https://zenodo.org/record/4587955
 # Files needed:
 #   silva_nr99_v138.1_train_set.fa.gz       (genus level)
@@ -178,7 +150,7 @@ taxa.print <- taxa
 rownames(taxa.print) <- NULL
 head(taxa.print)
 
-# ── 13. Build Phyloseq Object ───────────────────────────────
+# ── 12. Build Phyloseq Object ───────────────────────────────
 # Optional: load metadata table (samples × variables)
 # metadata <- read.csv(file.path(path, "metadata.csv"), row.names = 1)
 
@@ -197,7 +169,7 @@ ps  <- merge_phyloseq(ps, dna)
 taxa_names(ps) <- paste0("ASV", seq_along(taxa_names(ps)))
 ps
 
-# ── 14. Save Outputs ───────────────────────────────────────
+# ── 13. Save Outputs ───────────────────────────────────────
 saveRDS(seqtab.nochim,
         file.path(path, "seqtab_nochim.rds"))
 saveRDS(taxa,
@@ -214,7 +186,7 @@ write.csv(as.data.frame(taxa),
 path =("/Users/pc/Desktop/New folder (3)/")
 
 
-# ── 15. Quick Diversity Visualization (Optional) ────────────
+# ── 14. Quick Diversity Visualization (Optional) ────────────
 # Alpha diversity
 plot_richness(ps, measures = c("Shannon", "Simpson")) +
   theme_bw() +
